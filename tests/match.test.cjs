@@ -25,7 +25,7 @@ test('repeated requirements do not add extra penalty and only generic results ca
  assert.throws(()=>ctx.match.parse(JSON.stringify({requirements:[{requirement:'Low ego',importance:'required',status:'missing',jobEvidence:'Low ego',cvEvidence:''}]}),cv,'Low ego'),/No concrete qualifications/);
 });
 test('server and local fallback use the same concrete qualification prompt',()=>{
- const prompts=JSON.parse(fs.readFileSync('api-examples/prompts.json','utf8'));assert.equal(ctx.match.messages(cv,job)[0].content,prompts['job-match']);assert.match(prompts['job-match'],/Python OR TypeScript/);
+ const prompts=JSON.parse(fs.readFileSync('node-api/src/prompts.json','utf8'));assert.equal(ctx.match.messages(cv,job)[0].content,prompts['job-match']);assert.match(prompts['job-match'],/Python OR TypeScript/);
 });
 test('transferable skill evidence earns partial credit without treating tools as identical',()=>{
  const row={requirement:'Redux',importance:'required',status:'met',category:'skill',jobEvidence:'Redux experience',cvEvidence:'Zustand',basis:'transferable'};
