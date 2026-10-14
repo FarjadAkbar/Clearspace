@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Clearspace \u2014 Brain dump & focus",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "description": "Write or speak a brain dump, organize your thoughts, and focus with a 25-minute Pomodoro timer.",
   "permissions": [
     "storage",

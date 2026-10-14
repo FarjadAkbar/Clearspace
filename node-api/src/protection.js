@@ -1,4 +1,5 @@
 import {MongoClient} from 'mongodb';
+import {startupError} from './diagnostics.js';
 export class MongoProtection{
  constructor(db){this.quotas=db.collection('quotas');this.leases=db.collection('leases');}
  async initialize(){await this.quotas.createIndex({expiresAt:1},{expireAfterSeconds:0});await this.leases.createIndex({expiresAt:1},{expireAfterSeconds:0});}
@@ -17,8 +18,8 @@ export class MongoProtection{
  async release(key,owner){await this.leases.deleteOne({_id:key,owner});}
 }
 export async function connectProtection(uri,database){
- if(!uri?.startsWith('mongodb+srv://'))throw Error('Use a MongoDB Atlas SRV connection string');
- const client=new MongoClient(uri,{tls:true,maxPoolSize:10,serverSelectionTimeoutMS:5000,connectTimeoutMS:5000,socketTimeoutMS:5000,writeConcern:{w:'majority'}});
+ if(!uri?.startsWith('mongodb+srv://'))throw startupError('CONFIG_MONGO_URI');
+ let client;try{client=new MongoClient(uri,{tls:true,maxPoolSize:10,serverSelectionTimeoutMS:5000,connectTimeoutMS:5000,socketTimeoutMS:5000,writeConcern:{w:'majority'}});}catch{throw startupError('CONFIG_MONGO_URI');}
  try{await client.connect();const store=new MongoProtection(client.db(database));await store.initialize();return {store,close:()=>client.close()};}
- catch{await client.close();throw Error('Cannot connect to the quota database');}
+ catch(error){await client.close();const code=error?.code===18?'MONGO_AUTH':error?.code===13?'MONGO_PERMISSION':['ENOTFOUND','EAI_AGAIN'].includes(error?.code)||['ENOTFOUND','EAI_AGAIN'].includes(error?.cause?.code)?'MONGO_DNS':'MONGO_CONNECT';throw startupError(code);}
 }

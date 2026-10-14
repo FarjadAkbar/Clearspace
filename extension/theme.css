@@ -35,3 +35,19 @@ aside{overflow-y:auto;overscroll-behavior:contain}.sidebar-focus{margin-top:22px
 .settings-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.backup-import{display:flex;flex-direction:column;gap:6px;font-size:12px}.backup-import input{max-width:100%}
 @media(max-width:1200px){.pomodoro-bar{grid-template-columns:auto auto 1fr;gap:10px}.pomodoro-label{grid-column:1}.pomodoro-bar .modes{grid-column:2}.pomodoro-bar .timer{grid-column:3;text-align:right}.pomodoro-task{grid-column:1/3}.pomodoro-bar .timer-actions{grid-column:3}}
 @media(max-width:600px){.app-header{padding-top:6px}.pomodoro-bar{padding:12px;gap:10px;grid-template-columns:1fr auto}.pomodoro-label{grid-column:1}.pomodoro-bar .timer{grid-column:2;grid-row:1;text-align:right;font-size:30px}.pomodoro-bar .modes{grid-column:1/-1;grid-row:2;justify-content:flex-start}.pomodoro-task{grid-column:1/-1;grid-row:3}.pomodoro-bar .timer-actions{grid-column:1/-1;grid-row:4}.pomodoro-bar .timer-actions #start{flex:1}.header-meta .focus-pill{padding:4px 8px;font-size:9px}.header-meta>span:first-child{font-size:10px}.page-title{margin-top:24px}}
+
+/* The embedded matcher follows the page width and grows with its results. */
+.matcher-frame{display:block;width:100%;height:900px;border:0;background:transparent;border-radius:16px}
+.integrated-match{padding:0!important;margin:0;min-height:0;background:transparent}
+.integrated-match #ats-root{max-width:none;margin:0;padding:0}
+.compact-task-title{display:none}
+.app-header.is-compact{padding:6px 0;gap:0}
+.app-header.is-compact .header-meta,.app-header.is-compact .pomodoro-task,.app-header.is-compact .modes,.app-header.is-compact #timer-status,.app-header.is-compact .pomodoro-label small{display:none}
+.app-header.is-compact .pomodoro-bar{display:flex;gap:12px;padding:8px 12px;border-radius:10px;min-height:48px}
+.app-header.is-compact .pomodoro-label strong{font-size:12px}
+.app-header.is-compact .timer{font-size:24px;letter-spacing:0}
+.app-header.is-compact .compact-task-title{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.app-header.is-compact .timer-actions{margin-left:auto;flex-shrink:0}
+.app-header.is-compact .timer-actions button{padding:7px 10px;font-size:11px}
+@media(max-width:600px){.app-header.is-compact .pomodoro-label{display:none}.app-header.is-compact .pomodoro-bar{gap:8px}.app-header.is-compact .timer{font-size:22px}.app-header.is-compact .timer-actions #start{flex:initial}}
+.app-header,.app-header .pomodoro-bar{min-width:0;max-width:100%;width:100%}

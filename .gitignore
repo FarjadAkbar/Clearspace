@@ -15,3 +15,5 @@ node_modules/
 *.db-shm
 # Local preview logs
 preview-server*.log
+
+.artifacts/
