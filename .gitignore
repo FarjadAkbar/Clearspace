@@ -1,0 +1,17 @@
+# Local secrets and environments
+.env
+.env.*
+!.env.example
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+node_modules/
+# Generated packages and local SQLite state
+*.zip
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+# Local preview logs
+preview-server*.log

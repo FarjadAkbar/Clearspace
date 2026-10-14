@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-function setup(fetch){const ctx=vm.createContext({fetch});vm.runInContext(fs.readFileSync('service-api.js','utf8')+';globalThis.api=ClearspaceAPI;',ctx);return ctx.api;}
+function setup(fetch){const ctx=vm.createContext({fetch});vm.runInContext(fs.readFileSync('extension/service-api.js','utf8')+';globalThis.api=ClearspaceAPI;',ctx);return ctx.api;}
 test('service requests send feature inputs to the fixed server without a provider key',async()=>{let request;const api=setup(async(url,options)=>{request={url,options};return {ok:true,json:async()=>({items:[]})};});await api.request('organize',{transcript:'hello',date:'2026-10-07'});assert.equal(request.url,'https://clearspace.decentgatewaysllc.com/api/clearspace/organize');assert.equal(request.options.credentials,'omit');assert.equal(request.options.headers.Authorization,undefined);assert.equal(JSON.parse(request.options.body).transcript,'hello');});
 test('unsupported features and API quota failures are reported',async()=>{const api=setup(async()=>({ok:false,status:429}));await assert.rejects(api.request('other',{}),/Unknown/);await assert.rejects(api.request('job-match',{}),/Usage limit/);});
 test('repeated successful inputs reuse a recent result, changed inputs make a new call',async()=>{

@@ -2,7 +2,7 @@ import os,json,secrets,hashlib,hmac,uuid,logging,base64,subprocess,sys,asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 import httpx,spacy
-from redis.asyncio import Redis
+from .protection import SQLiteProtection
 from fastapi import FastAPI,Request,HTTPException,UploadFile,File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,22 +29,20 @@ async def lifespan(app):
     app.state.public=os.getenv('PUBLIC_ACCESS','false').lower()=='true'
     if not app.state.public and not app.state.token_hashes:raise RuntimeError('Configure access tokens or explicitly enable public demo access')
     app.state.nlp=spacy.load('en_core_web_sm',disable=['parser','lemmatizer'])
-    app.state.redis=Redis.from_url(os.environ['REDIS_URL'],decode_responses=True)
-    await app.state.redis.ping()
+    app.state.protection=SQLiteProtection(os.getenv('SQLITE_PATH','/data/clearspace.sqlite3'))
     app.state.http=httpx.AsyncClient(timeout=httpx.Timeout(45,connect=10),follow_redirects=False)
     app.state.prompts=json.loads((ROOT/'prompts.json').read_text(encoding='utf-8'))
     yield
-    await app.state.http.aclose();await app.state.redis.aclose()
+    await app.state.http.aclose()
 
-app=FastAPI(title='Clearspace API',version='1.0.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
+app=FastAPI(title='Clearspace API',version='1.1.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
 origins=[o.strip() for o in os.getenv('CORS_ORIGINS','').split(',') if o.strip()]
 app.add_middleware(CORSMiddleware,allow_origins=origins,allow_credentials=False,allow_methods=['POST','GET'],allow_headers=['Content-Type','Authorization'],expose_headers=['X-Request-ID','Retry-After'])
 app.add_middleware(TrustedHostMiddleware,allowed_hosts=['clearspace.decentgatewaysllc.com','localhost','127.0.0.1','testserver'])
 
-# Atomic shared Redis quota; no per-worker memory-only rate limiter.
-QUOTA="""local n=redis.call('INCR',KEYS[1]);if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end;return {n,redis.call('TTL',KEYS[1])}"""
+# Atomic quotas persisted across processes/restarts on the same local disk.
 async def quota(request,key,limit,seconds):
-    try:count,ttl=await request.app.state.redis.eval(QUOTA,1,'clearspace:'+key,seconds)
+    try:count,ttl=await request.app.state.protection.increment('clearspace:'+key,seconds)
     except Exception:raise HTTPException(503,'Request protection is temporarily unavailable')
     if count>limit:raise HTTPException(429,'Usage limit reached',headers={'Retry-After':str(max(1,ttl))})
 
@@ -104,8 +102,8 @@ async def ask(request,feature,text):
     await quota(request,'ai-hour:'+request.state.identity,10,3600)
     await quota(request,'ai-day:'+request.state.identity,25,86400)
     await quota(request,'ai-global-day',int(os.getenv('GLOBAL_AI_DAILY_LIMIT','200')),86400)
-    redis=request.app.state.redis; lease='clearspace:busy:'+request.state.identity;owner=secrets.token_hex(16)
-    if not await redis.set(lease,owner,nx=True,ex=55):raise HTTPException(409,'An AI request is already running')
+    protection=request.app.state.protection; lease='clearspace:busy:'+request.state.identity;owner=secrets.token_hex(16)
+    if not await protection.acquire(lease,owner,55):raise HTTPException(409,'An AI request is already running')
     try:
         upstream=await request.app.state.http.post(request.app.state.provider,headers={'Authorization':'Bearer '+request.app.state.key,'Accept':'application/json'},json={'model':'deepseek-ai/deepseek-v4.1-flash','messages':[{'role':'system','content':request.app.state.prompts[feature]},{'role':'user','content':text}],'temperature':0.1,'max_completion_tokens':4096,'reasoning_effort':'none','stream':False})
         if upstream.status_code!=200:
@@ -121,7 +119,7 @@ async def ask(request,feature,text):
     except HTTPException:raise
     except (httpx.HTTPError,ValueError,KeyError,IndexError,TypeError):raise HTTPException(502,'Invalid or unavailable AI response')
     finally:
-        await redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0",1,lease,owner)
+        await protection.release(lease,owner)
 
 @app.post('/api/clearspace/organize')
 async def organize(input:OrganizeInput,request:Request):

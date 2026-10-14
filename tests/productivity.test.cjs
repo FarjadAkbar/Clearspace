@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 const ctx=vm.createContext({URL,Date});
-vm.runInContext(fs.readFileSync('store.js','utf8')+';globalThis.features={capacityFor,taskSeconds,normalizeDomains,blockingRules};',ctx);
+vm.runInContext(fs.readFileSync('extension/store.js','utf8')+';globalThis.features={capacityFor,taskSeconds,normalizeDomains,blockingRules};',ctx);
 const {capacityFor,taskSeconds,normalizeDomains,blockingRules}=ctx.features;
 const running=()=>({timer:{mode:'focus',end:2000},blocking:{enabled:true,domains:['youtube.com'],overrideUntil:0}});
 test('capacity subtracts buffer and keeps completed blocks and excludes released tasks',()=>{const s={capacity:{available:120,buffer:30},tasks:[{id:'a'},{id:'b',done:true},{id:'c',quadrant:'drop'}],blocks:[{taskId:'a',date:'today',duration:100},{taskId:'b',date:'today',duration:25},{taskId:'c',date:'today',duration:25}]};const c=capacityFor(s,'today');assert.equal(c.usable,90);assert.equal(c.planned,125);assert.equal(c.remaining,-35);});

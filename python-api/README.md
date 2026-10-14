@@ -19,17 +19,17 @@ The API removes detected PERSON names using spaCy, explicit candidateName matche
 ## Deployment
 1. Point DNS for clearspace.decentgatewaysllc.com at your server.
 2. Copy this directory to the server; copy .env.example to .env.
-3. Set HIVE_API_KEY only on the server. Generate RATE_LIMIT_SECRET: python -c "import secrets; print(secrets.token_urlsafe(48))". Never put either in the extension, source control, screenshots or group messages.
+3. Set HIVE_API_KEY only on the server. SQLite is embedded: SQLITE_PATH points to the database file in the /data persistent volume. Generate RATE_LIMIT_SECRET: python -c "import secrets; print(secrets.token_urlsafe(48))". Never put either in the extension, source control, screenshots or group messages.
 4. Set CORS_ORIGINS to your actual published chrome-extension:// ID. For development explicitly add only your localhost origin. CORS/extension IDs do not authenticate users.
 5. Choose access mode: default requires a Bearer token whose SHA-256 hash is in ACCESS_TOKEN_HASHES. This is for server-to-server/private testing. Never embed a shared token into a public extension. For the current extension (no login), explicitly set PUBLIC_ACCESS=true for a capped public demo. Distributed abuse can bypass per-IP limits, so set a conservative GLOBAL_AI_DAILY_LIMIT and provider spending cap. For a paid service add account authentication, signed expiring access tokens and per-account entitlements; this scaffold does not implement billing/login.
-6. docker compose up -d --build. spaCy's English name model is installed during build; startup fails if the model or Redis is missing. Redis is private and persistent. The Docker build uses requirements.lock with pinned dependency versions. Pin the base/container image digests for your deployment and regularly update dependencies.
+6. docker compose up -d --build. spaCy's English name model is installed during build; startup fails if the model or SQLite is missing. SQLite lives in the API container’s persistent api-data volume; no separate database service is deployed. The Docker build uses requirements.lock with pinned dependency versions. Pin the base/container image digests for your deployment and regularly update dependencies.
 7. Configure your existing TLS nginx virtual host with nginx.conf.example; obtain/install a valid TLS certificate. API binds only to host loopback. Set the trusted proxy address as described below.
 8. Check /health and use a sample CV first. Verify quota, redaction and logging behavior before enabling public access.
 
 ## Proxy/IP limits
 The Docker bridge changes the immediate peer address seen by uvicorn. Set FORWARDED_ALLOW_IPS in .env to the exact nginx/host bridge address reaching the API container; never use '*'. nginx must overwrite X-Forwarded-For with $remote_addr, as shown. Without correctly trusted proxy configuration all requests may share the proxy's IP quota. Do not expose container port 8000 directly.
 
-Limits: 60 API requests/minute per identity, 10 uploads/hour, 10 AI calls/hour, 25 AI calls/day, global 200 AI calls/day (configurable). Rejected/repeated requests may consume quota intentionally. One provider call at a time per identity; no automatic provider retries. Redis failure blocks requests. Public mode is rate-limited, not authenticated. Concurrent requests share atomic Redis counters. Global daily count limits calls, not exact dollars; configure the provider's own budget alert/cap.
+Limits: 60 API requests/minute per identity, 10 uploads/hour, 10 AI calls/hour, 25 AI calls/day, global 200 AI calls/day (configurable). Rejected/repeated requests may consume quota intentionally. One provider call at a time per identity; no automatic provider retries. SQLite failure blocks requests. Public mode is rate-limited, not authenticated. Concurrent workers on ONE HOST share atomic SQLite transactions (WAL). Do not share the database across replicas, NFS or network filesystems. Scale to multiple hosts only after replacing this store with a shared database. Global daily count limits calls, not exact dollars; configure the provider's own budget alert/cap.
 
 PDF: up to 20 pages, text-based only; encrypted/scanned PDFs are rejected. DOCX: ZIP expansion/member limits, macro/external-reference rejection. Legacy .doc or .docs is not supported: save as .docx or PDF. Parsing runs in a subprocess with a 10-second timeout and Linux CPU/address-space limits, plus container memory/PID limits. No user URLs are fetched and the provider endpoint is restricted to Hive's known hosts. HTTP errors, validation errors and logs do not expose document text, API keys or upstream response bodies. Request IDs are returned as X-Request-ID. Protect .env backups and monitor dependency advisories.
 
@@ -39,6 +39,10 @@ python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
 .venv/Scripts/python -m pytest tests -q
 
-On Linux use .venv/bin/python. Real Redis, TLS, the deployed reverse proxy, Hive credentials and Urdu NER accuracy require staging verification. The test suite mocks provider/Redis/name entities; it does not establish production security or model accuracy.
+On Linux use .venv/bin/python. Real TLS, the deployed reverse proxy, Hive credentials and Urdu NER accuracy require staging verification. The test suite uses real temporary SQLite files and mocks provider/name entities; it does not establish production security or model accuracy.
 
 For curl private testing use an environment variable for your own issued access token (never a provider key), then POST JSON or use -F file=@resume.pdf. Do not pass private documents in shell command history.
+
+Back up /data using SQLite’s backup API (do not copy only the DB while WAL writes are active). Volume removal resets quotas, so preserve api-data when updating containers. Stored data is hashed quota identifiers and expiring leases, not CVs or uploads.
+
+Recommendations are built from verified requirement/evidence pairs. Transferable skills get explicit caveats; missing skills get conditional advice, not fabricated bullets. Moving from Redis starts a new quota history; use a conservative global daily cap during cutover.

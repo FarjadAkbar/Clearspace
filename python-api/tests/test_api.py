@@ -41,17 +41,15 @@ def configure_app():
     from clearspace.main import app
     app.state.public=True;app.state.secret='x'*48;app.state.token_hashes=[];app.state.key='server-only-secret';app.state.provider='https://api.thehive.ai/api/v3/chat/completions'
     app.state.nlp=nlp;app.state.prompts=json.loads(__import__('pathlib').Path('clearspace/prompts.json').read_text())
-    class Redis:
-        def __init__(self):self.count={};self.leases={};self.fail=False
-        async def eval(self,script,count,key,*args):
+    from clearspace.protection import SQLiteProtection
+    import tempfile
+    app.state.test_directory=tempfile.TemporaryDirectory()
+    class Protection(SQLiteProtection):
+        fail=False
+        async def increment(self,key,seconds):
             if self.fail:raise RuntimeError('down')
-            if "INCR" in script:
-                self.count[key]=self.count.get(key,0)+1;return [self.count[key],int(args[0])]
-            self.leases.pop(key,None);return 1
-        async def set(self,key,owner,**kwargs):
-            if key in self.leases:return False
-            self.leases[key]=owner;return True
-    app.state.redis=Redis();seen=[]
+            return await super().increment(key,seconds)
+    app.state.protection=Protection(__import__('pathlib').Path(app.state.test_directory.name)/'quota.sqlite3');seen=[]
     def provider(request):
         body=json.loads(request.content);seen.append(body)
         assert request.headers['Authorization']=='Bearer server-only-secret'
@@ -73,13 +71,13 @@ def test_provider_receives_redacted_cv_and_errors_do_not_echo_inputs():
     assert invalid.status_code==422 and 'private-secret' not in invalid.text
     assert result.headers['Cache-Control']=='no-store'
 
-def test_auth_quota_and_redis_fail_closed():
+def test_auth_quota_and_sqlite_fail_closed():
     from fastapi.testclient import TestClient
     app,_=configure_app();client=TestClient(app);app.state.public=False
     assert client.post('/api/clearspace/job-match',json={}).status_code==401
-    app.state.public=True;app.state.redis.fail=True
+    app.state.public=True;app.state.protection.fail=True
     assert client.post('/api/clearspace/job-match',json={}).status_code==503
-    app.state.redis.fail=False
+    app.state.protection.fail=False
     for _ in range(60):client.post('/api/clearspace/job-match',json={})
     assert client.post('/api/clearspace/job-match',json={}).status_code==429
 
@@ -98,3 +96,12 @@ def test_chunked_body_limit_invalid_host_and_bad_token():
     assert result.status_code==413,result.text
     assert client.get('/health',headers={'Host':'evil.example'}).status_code==400
     assert client.post('/api/clearspace/job-match',json={},headers={'Authorization':'Bearer untrusted'}).status_code==401
+def test_recommendations_do_not_repeat_fabricated_model_suggestions():
+    row={'requirement':'Redux','category':'skill','importance':'required','status':'partial','jobEvidence':'Redux experience','cvEvidence':'Zustand','basis':'transferable'}
+    result=verify_assessment({'requirements':[row],'suggestions':['Claim five years of Redux and 90% sales growth.']},'Built UI with Zustand','Redux experience')
+    advice=result['suggestions'][0]
+    assert 'Zustand' in advice and 'do not claim' in advice
+    assert '90%' not in advice and 'five years' not in advice
+    row.update(status='missing',cvEvidence='',basis='none')
+    advice=verify_assessment({'requirements':[row]},'Built UI with Zustand','Redux experience')['suggestions'][0]
+    assert 'If you have this experience' in advice

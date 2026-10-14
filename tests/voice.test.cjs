@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 const ctx=vm.createContext({});
-vm.runInContext(fs.readFileSync('voice.js','utf8').split('(() => {')[0]+';globalThis.text=VoiceText;',ctx);
+vm.runInContext(fs.readFileSync('extension/voice.js','utf8').split('(() => {')[0]+';globalThis.text=VoiceText;',ctx);
 test('Urdu and English list lines preserve their original script',()=>{assert.equal(ctx.text.items('کل اسائنمنٹ شروع کرنی ہے\nReply to a message').join('|'),'کل اسائنمنٹ شروع کرنی ہے|Reply to a message');});
 test('bullets and Urdu list numbers are removed without splitting punctuation',()=>{assert.equal(ctx.text.items('۱. کام شروع کرو\n• Reply, then plan\n\n2) Call Ali').join('|'),'کام شروع کرو|Reply, then plan|Call Ali');});
 test('spoken task separators work in both languages',()=>{assert.equal(ctx.text.thought('Reply to Ali next task کل اسائنمنٹ نیا کام Read a chapter'),'Reply to Ali\nکل اسائنمنٹ\nRead a chapter');});

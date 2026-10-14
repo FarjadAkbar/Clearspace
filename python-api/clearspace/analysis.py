@@ -48,6 +48,19 @@ def verify_assessment(data,cv,job):
     if any(len(s)>800 for s in result.suggestions):raise ValueError('Suggestion too long')
     total=sum(2 if r.importance=='required' else 1 for r in rows)
     earned=sum((2 if r.importance=='required' else 1)*{'met':1,'partial':.5,'missing':0,'unknown':0}[r.status] for r in rows)
+    recommendations=[]
+    for row in sorted(rows,key=lambda r:(r.importance!='required',r.status not in ('missing','unknown'))):
+        if row.status=='met':continue
+        label=row.requirement[:180];quote=row.cvEvidence[:200]
+        if row.status=='partial' and row.basis=='transferable':
+            advice=f"{label}: retain your existing evidence ({quote}). Explain the transferable work; do not claim the requested tool unless you have used it."
+        elif row.cvEvidence:
+            advice=f"{label}: expand the existing example ({quote}) with your actual responsibility and outcome. Add numbers only if you can verify them."
+        else:
+            advice=f"{label}: your CV has no verified example. If you have this experience, add a specific project or role demonstrating it; otherwise keep it as a skill gap."
+        recommendations.append(advice)
+        if len(recommendations)==3:break
+    result.suggestions=recommendations
     return {**result.model_dump(), 'score':int(earned/total*100+.5)}
 
 MONTHS={name:i+1 for i,name in enumerate(['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'])}

@@ -3,7 +3,7 @@ services:
     build: .
     env_file: .env
     ports: ['127.0.0.1:8000:8000']
-    depends_on: [redis]
+    volumes: ['api-data:/data']
     restart: unless-stopped
     read_only: true
     tmpfs: ['/tmp:size=32m,mode=1777']
@@ -12,11 +12,5 @@ services:
     pids_limit: 128
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ['redis-server','--appendonly','yes','--maxmemory','128mb','--maxmemory-policy','noeviction']
-    volumes: ['quota-data:/data']
-    # No public Redis port. Quotas persist across restarts.
 volumes:
-  quota-data:
+  api-data:

@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-const source=fs.readFileSync('scroll-content.js','utf8');
+const source=fs.readFileSync('extension/scroll-content.js','utf8');
 function setup({hidden=false,tall=true}={}){
  let now=0,scan,intervals=0;const messages=[],badges=[];
  const video={paused:false,currentSrc:'first-reel',src:'',dataset:{},style:{outline:''},getBoundingClientRect:()=>({left:100,top:0,right:500,bottom:tall?1400:600,width:400,height:tall?1400:600}),closest:()=>null,contains:el=>el===video};

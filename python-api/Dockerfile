@@ -4,6 +4,7 @@ WORKDIR /app
 COPY requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock && python -m spacy download en_core_web_sm
 RUN useradd --uid 10001 --create-home appuser
+RUN mkdir /data && chown appuser:appuser /data
 COPY clearspace ./clearspace
 USER appuser
 EXPOSE 8000

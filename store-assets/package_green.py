@@ -1,25 +1,14 @@
+"""Optional packaging helper. Run from any directory; archives contain extension only."""
 from pathlib import Path
-import zipfile
-root=Path('.')
-with zipfile.ZipFile('clearspace-extension-2.7.0.zip','w',zipfile.ZIP_DEFLATED) as z:
- for p in root.iterdir():
-  if p.is_file() and (p.suffix in ['.html','.js','.css'] or p.name in ['manifest.json','icon.png','icon.svg']):z.write(p,p.name)
- for folder in ['fonts','sounds']:
-  for p in (root/folder).rglob('*'):
-   if p.is_file():z.write(p,p.as_posix())
-with zipfile.ZipFile('website/clearspace-website.zip','w',zipfile.ZIP_DEFLATED) as z:
- for p in Path('website').rglob('*'):
-  if p.is_file() and p.suffix!='.zip':z.write(p,p.relative_to('website').as_posix())
-print('Extension and website packages rebuilt with local fonts.')
-
-
-
-
-
-
-
-
-
-
-
-
+import argparse,json,zipfile
+ROOT=Path(__file__).resolve().parent.parent
+parser=argparse.ArgumentParser()
+parser.add_argument('--output',type=Path,default=None)
+args=parser.parse_args()
+source=ROOT/'extension'
+version=json.loads((source/'manifest.json').read_text())['version']
+output=args.output or ROOT/f'clearspace-extension-{version}.zip'
+with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as archive:
+ for file in source.rglob('*'):
+  if file.is_file():archive.write(file,file.relative_to(source).as_posix())
+print(output)

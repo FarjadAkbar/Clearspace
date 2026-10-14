@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-const ctx=vm.createContext({URL});vm.runInContext(fs.readFileSync('match-core.js','utf8')+';globalThis.match=JobMatch;',ctx);
+const ctx=vm.createContext({URL});vm.runInContext(fs.readFileSync('extension/match-core.js','utf8')+';globalThis.match=JobMatch;',ctx);
 const cv='Built applications with JavaScript and SQL.',job='Must have JavaScript experience. SQL preferred.';
 const requirements=[{requirement:'JavaScript',importance:'required',status:'met',jobEvidence:'JavaScript experience',cvEvidence:'JavaScript'},{requirement:'SQL',importance:'preferred',status:'partial',jobEvidence:'SQL preferred',cvEvidence:'SQL'}];
 test('weighted score is computed locally from evidenced requirements',()=>{assert.equal(ctx.match.parse(JSON.stringify({requirements}),cv,job).score,83);});
