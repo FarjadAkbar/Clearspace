@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Clearspace \u2014 Brain dump & focus",
+  "version": "2.7.0",
+  "description": "Write or speak a brain dump, organize your thoughts, and focus with a 25-minute Pomodoro timer.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "activeTab",
+    "scripting",
+    "offscreen"
+  ],
+  "icons": {
+    "128": "icon.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Clearspace"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "host_permissions": [
+    "https://clearspace.decentgatewaysllc.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://www.instagram.com/*",
+    "https://www.facebook.com/*",
+    "https://www.youtube.com/*",
+    "https://*.facebook.com/*"
+  ]
+}

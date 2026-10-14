@@ -1,0 +1,12 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const vm=require('node:vm');
+const fs=require('node:fs');
+const ctx=vm.createContext({URL,Date});
+vm.runInContext(fs.readFileSync('ai.js','utf8').split('(() => {')[0]+';globalThis.organize=Organize;',ctx);
+const ai=ctx.organize;
+test('Hive endpoint uses the provided v3 base',()=>{assert.equal(ai.endpoint('https://api.thehive.ai/api/v3/'),'https://api.thehive.ai/api/v3/chat/completions');for(const url of ['http://example.com','https://user:secret@example.com','https://example.com/?key=secret'])assert.throws(()=>ai.endpoint(url));});
+test('whole mixed-language transcript is passed intact with a local date',()=>{const text='Amal assignment pending hai. Research karni hai. پھر introduction لکھنا ہے۔ Friday ko submit karna hai.';const m=ai.messages(text,'2026-10-05');assert.equal(m[1].content,text);assert.ok(m[0].content.includes('2026-10-05'));assert.ok(m[0].content.includes('ONE item'));});
+test('one model item remains one goal with nested steps',()=>{const items=ai.parse(JSON.stringify({items:[{title:'Finish Amal assignment',kind:'task',dueDate:'2026-10-09',nextSteps:['Research the topic','Write introduction']}]}));assert.equal(items.length,1);assert.equal(items[0].nextSteps.length,2);assert.equal(items[0].dueDate,'2026-10-09');});
+test('Urdu script and non-task categories are preserved',()=>{const items=ai.parse('```json\n{"items":[{"title":"ایک نئی ایپ کا خیال","kind":"idea","nextSteps":[],"dueDate":null}]}\n```');assert.equal(items[0].title,'ایک نئی ایپ کا خیال');assert.equal(items[0].kind,'idea');});
+test('malformed content, impossible dates, and unsafe schemas fail before saving',()=>{for(const input of ['plain prose','{"items":{}}','{"items":[{"title":"Task","kind":"unknown"}]}','{"items":[{"title":"Task","kind":"task","dueDate":"2026-02-31"}]}','{"items":[{"title":"Task","kind":"task","nextSteps":[{}]}]}'])assert.throws(()=>ai.parse(input));});

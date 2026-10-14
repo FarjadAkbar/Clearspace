@@ -1,0 +1,12 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const vm=require('node:vm');
+const fs=require('node:fs');
+const ctx=vm.createContext({URL,Date});
+vm.runInContext(fs.readFileSync('store.js','utf8')+';globalThis.features={capacityFor,taskSeconds,normalizeDomains,blockingRules};',ctx);
+const {capacityFor,taskSeconds,normalizeDomains,blockingRules}=ctx.features;
+const running=()=>({timer:{mode:'focus',end:2000},blocking:{enabled:true,domains:['youtube.com'],overrideUntil:0}});
+test('capacity subtracts buffer and keeps completed blocks and excludes released tasks',()=>{const s={capacity:{available:120,buffer:30},tasks:[{id:'a'},{id:'b',done:true},{id:'c',quadrant:'drop'}],blocks:[{taskId:'a',date:'today',duration:100},{taskId:'b',date:'today',duration:25},{taskId:'c',date:'today',duration:25}]};const c=capacityFor(s,'today');assert.equal(c.usable,90);assert.equal(c.planned,125);assert.equal(c.remaining,-35);});
+test('tracked time sums only sessions linked to the task',()=>{assert.equal(taskSeconds({sessions:[{taskId:'a',seconds:1500},{taskId:'a',seconds:60},{taskId:'b',seconds:200}]},'a'),1560);});
+test('domain input normalizes and rejects paths, credentials, and invalid protocols',()=>{assert.equal(normalizeDomains('www.youtube.com, https://youtube.com\ninstagram.com').join(','),'youtube.com,instagram.com');for(const bad of ['youtube.com/watch','https://user:password@example.com','ftp://example.com','not-a-domain','example.com:8080'])assert.throws(()=>normalizeDomains(bad));});
+test('blocking applies only during active focus without an override',()=>{const s=running();assert.equal(blockingRules(s,1000).length,1);assert.equal(blockingRules(s,1000)[0].condition.resourceTypes[0],'main_frame');for(const change of [{paused:true},{logged:true},{mode:'break'},{end:500}])assert.equal(blockingRules({...s,timer:{...s.timer,...change}},1000).length,0);assert.equal(blockingRules({...s,blocking:{...s.blocking,overrideUntil:1500}},1000).length,0);assert.equal(blockingRules({...s,blocking:{...s.blocking,overrideUntil:1500}},1600).length,1);assert.equal(blockingRules({...s,blocking:{...s.blocking,enabled:false}},1000).length,0);});

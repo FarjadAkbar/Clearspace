@@ -1,0 +1,7 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');
+const source=fs.readFileSync('job-page.js','utf8');
+function capture(host,selectors){const ctx={location:{hostname:host},document:{title:'Selected role',querySelectorAll:s=>selectors[s]||[],querySelector:s=>(selectors[s]||[])[0]}};vm.createContext(ctx);vm.runInContext(source+';result=captureJobPage;',ctx);return ctx.result();}
+const element=text=>({innerText:text,getClientRects:()=>[{}]});
+test('LinkedIn description wins over the results list',()=>{const job='About the job\nAt Disrupt, we combine hands-on engineering, AI tools and a disciplined delivery method. What you’ll do: Build and integrate APIs and databases.';const result=capture('www.linkedin.com',{'.jobs-description__content .jobs-box__html-content':[element(job)],main:[element('Jobs that match your profile\n37 results')]});assert.equal(result.text,job);});
+test('LinkedIn refuses results-only and hidden descriptions',()=>{assert.throws(()=>capture('www.linkedin.com',{main:[element('Jobs that match your profile '.repeat(20))]}),/description not found/);assert.throws(()=>capture('www.linkedin.com',{'.jobs-description':[ {...element('long description '.repeat(20)),getClientRects:()=>[]}]}));});
+test('generic job page can use its main content',()=>{const text='Responsibilities: build software and integrate APIs. Required experience with Python and TypeScript. '.repeat(3);assert.equal(capture('example.com',{main:[element(text)]}).text,text.trim());});

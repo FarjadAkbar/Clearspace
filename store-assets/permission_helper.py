@@ -1,0 +1,2 @@
+from pathlib import Path
+p=Path('awareness.js');s=p.read_text(encoding='utf-8-sig');a=s.index('const origins=sites.map(site=>');b=s.index(';if(origins.length',a);mapping=s[a:b];expr=mapping.replace('const origins=','');s=s[:a]+'const origins=awarenessOrigins(sites,declared)'+s[b:];idx=s.index('let scrollStats');s=s[:idx]+'function awarenessOrigins(sites,declared){return '+expr+';}\n'+s[idx:];p.write_text(s,encoding='utf-8')
